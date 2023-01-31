@@ -1,3 +1,4 @@
+import pandas
 import yfinance as yf
 import pandas as pd
 import time
@@ -6,20 +7,27 @@ from datetime import datetime
 
 
 def create_data(interval, currency="EURUSD=X", period="5d"):
-    file_name = "CachedData/"+currency+"_"+interval
+    file_name = "CachedData/" + currency + "_" + interval
     tz = pytz.timezone('Asia/Tehran')
     try:
-        df_old = pd.read_csv(file_name)
+        df_old = pd.read_csv(file_name, index_col=False)
         last_date_data = df_old["Datetime"].values[-1]
         last_date_data = datetime.strptime(last_date_data, "%Y-%m-%d %H:%M:%S%z")
         temp_data = yf.Ticker(currency).history(period="1d", interval=interval).tz_convert(tz)
         last_online_date = temp_data["Close"].index[-1]
         if last_date_data < last_online_date:
             print("there is some new data")
+            diff_x = 0
+            for x in reversed(temp_data.index):
+                if last_date_data >= x:
+                    break
+                diff_x += 1
 
+            temp_data.tail(diff_x).to_csv(file_name+"_temp", mode='w', header=True)
+            updated_data = pd.concat([df_old, temp_data.tail(diff_x)])
 
-        data = yf.Ticker(currency).history(period=period, interval=interval).tz_convert(tz)
-        updated_data = df_old.append(data)
+        # data = yf.Ticker(currency).history(period=period, interval=interval).tz_convert(tz)
+        # updated_data = df_old.append(data)
         updated_data.to_csv(file_name, mode='w', header=False)
     except:
         print("no data file")
